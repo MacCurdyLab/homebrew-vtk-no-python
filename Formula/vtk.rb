@@ -7,6 +7,15 @@ class Vtk < Formula
   revision 2
   head "https://gitlab.kitware.com/vtk/vtk.git", branch: "master"
 
+  bottle do
+    sha256 cellar: :any,                 arm64_tahoe:   "1c527182b2977e2a90c68cd000622dc312685e49a9a87402917a416969203b56"
+    sha256 cellar: :any,                 arm64_sequoia: "40821fb74f71d78ea3c1a8a3de870a31f977a17d31ddd6aac627a2423c01e6f5"
+    sha256 cellar: :any,                 arm64_sonoma:  "a6549d4e94df069fe0dc2eaa771136292820eb3462c6493c66385fddbe873d17"
+    sha256 cellar: :any,                 sonoma:        "3dc0560fee378ce9b12866898a5675bad8e1d3837e5a6bf8877248b3b933f311"
+    sha256 cellar: :any_skip_relocation, arm64_linux:   "89c83a857f7f529adaecea5c7f18926bf80409f30043b8d1c25cec30350cd6c7"
+    sha256 cellar: :any_skip_relocation, x86_64_linux:  "5971c75d68c2918f19705522211fd276c8de22878656fb1fed2bcd77c55333bc"
+  end
+
   depends_on "cmake" => [:build, :test]
   depends_on "boost"
   depends_on "cgns"
