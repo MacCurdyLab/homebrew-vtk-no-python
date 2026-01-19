@@ -17,6 +17,7 @@ class Vtk < Formula
   end
 
   depends_on "cmake" => [:build, :test]
+  depends_on "pyqt" => :test
   depends_on "boost"
   depends_on "cgns"
   depends_on "double-conversion"
@@ -35,6 +36,9 @@ class Vtk < Formula
   depends_on "nlohmann-json"
   depends_on "proj"
   depends_on "pugixml"
+  depends_on "python@3.14"
+  depends_on "qtbase"
+  depends_on "qtdeclarative"
   depends_on "sqlite"
   depends_on "theora"
   depends_on "utf8cpp"
@@ -61,8 +65,10 @@ class Vtk < Formula
       ENV.remove "HOMEBREW_DEPENDENCIES", "expat"
     end
 
+    python = "python3.14"
     qml_plugin_dir = lib/"qml/VTK.#{version.major_minor}"
-    rpaths = [rpath, rpath(source: qml_plugin_dir)]
+    vtkmodules_dir = prefix/Language::Python.site_packages(python)/"vtkmodules"
+    rpaths = [rpath, rpath(source: qml_plugin_dir), rpath(source: vtkmodules_dir)]
 
     args = %W[
       -DBUILD_SHARED_LIBS:BOOL=ON
@@ -99,7 +105,8 @@ class Vtk < Formula
       -DVTK_MODULE_USE_EXTERNAL_VTK_tiff:BOOL=ON
       -DVTK_MODULE_USE_EXTERNAL_VTK_utf8:BOOL=ON
       -DVTK_MODULE_USE_EXTERNAL_VTK_zlib:BOOL=ON
-      -DVTK_GROUP_ENABLE_Qt:STRING=NO
+      -DPython3_EXECUTABLE:FILEPATH=#{which(python)}
+      -DVTK_GROUP_ENABLE_Qt:STRING=YES
       -DVTK_QT_VERSION:STRING=6
     ]
     # External gl2ps causes failure linking to macOS OpenGL.framework
@@ -110,4 +117,43 @@ class Vtk < Formula
     system "cmake", "--install", "build"
   end
 
+  test do
+    vtk_dir = lib/"cmake/vtk-#{version.major_minor}"
+    vtk_cmake_module = vtk_dir/"VTK-vtk-module-find-packages.cmake"
+    assert_match Formula["boost"].version.major_minor_patch.to_s, vtk_cmake_module.read,
+                 "VTK needs to be rebuilt against Boost!"
+
+    (testpath/"CMakeLists.txt").write <<~CMAKE
+      cmake_minimum_required(VERSION 4.0 FATAL_ERROR)
+      project(Distance2BetweenPoints LANGUAGES CXX)
+      find_package(VTK REQUIRED COMPONENTS vtkCommonCore CONFIG)
+      add_executable(Distance2BetweenPoints Distance2BetweenPoints.cxx)
+      target_link_libraries(Distance2BetweenPoints PRIVATE ${VTK_LIBRARIES})
+    CMAKE
+
+    (testpath/"Distance2BetweenPoints.cxx").write <<~CPP
+      #include <cassert>
+      #include <vtkMath.h>
+      int main() {
+        double p0[3] = {0.0, 0.0, 0.0};
+        double p1[3] = {1.0, 1.0, 1.0};
+        assert(vtkMath::Distance2BetweenPoints(p0, p1) == 3.0);
+        return 0;
+      }
+    CPP
+
+    system "cmake", ".", "-DCMAKE_BUILD_TYPE=Debug", "-DCMAKE_VERBOSE_MAKEFILE=ON", "-DVTK_DIR=#{vtk_dir}"
+    system "make"
+    system "./Distance2BetweenPoints"
+
+    (testpath/"Distance2BetweenPoints.py").write <<~PYTHON
+      import vtk
+      p0 = (0, 0, 0)
+      p1 = (1, 1, 1)
+      assert vtk.vtkMath.Distance2BetweenPoints(p0, p1) == 3
+    PYTHON
+
+    system bin/"vtkpython", "Distance2BetweenPoints.py"
+    system bin/"vtkpython", "-c", "from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor"
+  end
 end
