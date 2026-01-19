@@ -62,8 +62,7 @@ class Vtk < Formula
     end
 
     qml_plugin_dir = lib/"qml/VTK.#{version.major_minor}"
-    vtkmodules_dir = prefix/Language::Python.site_packages(python)/"vtkmodules"
-    rpaths = [rpath, rpath(source: qml_plugin_dir), rpath(source: vtkmodules_dir)]
+    rpaths = [rpath, rpath(source: qml_plugin_dir)]
 
     args = %W[
       -DBUILD_SHARED_LIBS:BOOL=ON
